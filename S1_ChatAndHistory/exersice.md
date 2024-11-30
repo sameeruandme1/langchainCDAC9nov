@@ -50,3 +50,109 @@ Chris Evans found himself in the bustling streets of New York, surrounded by tow
 In the heart of New York, where lights shimmer like stars, Chris Evans was drawn into an unexpected journey. The city had always held secrets, but tonight it felt alive, whispering to him through the cold night air. Following an old legend, he ventured into abandoned subway stations and hidden alleyways, guided only by a cryptic poem and his instinct. Each clue led him closer to a fabled artifact said to hold immense power. Alongside a mysterious heroine he met along the way, Chris faced twists and turns that tested their resolve. In the end, the adventure would unveil not just the artifact but a part of himself he never knew existed.
 
 ---
+
+
+import os
+import configparser
+from langchain_core.output_parsers import StrOutputParser
+from langchain_groq import ChatGroq
+from langchain_cohere import ChatCohere
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage, SystemMessage
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+groq = config['groq']
+cohere = config['cohere']
+os.environ['GROQ_API_KEY'] = groq.get('GROQ_API_KEY')
+os.environ['COHERE_API_KEY'] = cohere.get('COHERE_API_KEY')
+
+def actor_picker():
+    messages = [
+    SystemMessage(content='You have to pickup any random Bollywood actor from 1 to 5 and only give a actor name'),
+    HumanMessage(content=input("Enter a number from 1 to 5 choose a random Bollywood actor :- "))
+    ]
+    parser = StrOutputParser()
+    model = ChatGroq(model="llama3-8b-8192")
+    chain=model | parser
+    response= chain.invoke(messages)
+    print(response)
+    return response
+def location_picker():
+    messages = [
+    SystemMessage(content='You have to pick any random location and give different location and only give a location name'),
+    #HumanMessage(content=input("Enter a number from 1 to 5 choose a random location:- "))
+    ]
+    parser = StrOutputParser()
+    model = ChatGroq(model="llama3-8b-8192")
+    chain=model | parser
+    response= chain.invoke(messages)
+    print(response)
+    return response
+def theme_picker():
+    messages = [
+    SystemMessage(content='You have to pickup any random theme for movie and only give a theme'),
+    #HumanMessage(content=input("Enter a number from 1 to 5 choose a random theme:- "))
+    ]
+    parser = StrOutputParser()
+    model = ChatGroq(model="llama3-8b-8192")
+    chain=model | parser
+    response= chain.invoke(messages)
+    print(response)
+    return response
+actor=actor_picker()
+location=location_picker()
+theme=theme_picker()
+parser = StrOutputParser()
+
+system_template = "Return an output in string form as a story reading the output for the input three functions. Please provide a {{size}} related response."
+
+prompt_template = ChatPromptTemplate.from_messages(
+    [
+        ("system", system_template),
+        ("user", 'Create a story for a movie in which the actor is {actor}, the location for movie is {location} and the theme for the movie is {theme}.Tell the genre, location and starring for the movie and then display story.')  # Use string representation of my_list here
+    ]
+)
+def scriptwriter():
+    model_groq = ChatGroq(model="llama3-8b-8192")
+    chain = prompt_template | model_groq | parser
+
+    final_story_output = chain.invoke({"actor":actor,"location":location,"theme":theme})
+
+    print(final_story_output)
+    return final_story_output
+script=scriptwriter()
+# story=story_generator()
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+
+model = ChatGroq(model="llama3-8b-8192")
+
+from langchain_core.chat_history import(InMemoryChatMessageHistory)
+import asyncio
+store=InMemoryChatMessageHistory()
+
+async def History_Store():
+    store.add_message(HumanMessage(content=f'{script}'))
+    messages = await store.aget_messages()
+    response = model.invoke(messages)
+    print(response.content)
+    store.add_message(SystemMessage(content=response.content))
+    
+async def New_Story():
+    await asyncio.sleep(2)  
+    system_message_content = "Please change the movie story according to the changes in the given input"
+    store.add_message(SystemMessage(content=system_message_content))
+    user_input = input("Tell if you want to make changes to in your story:- ")
+    store.add_message(HumanMessage(content=user_input))
+    messages = await store.aget_messages()
+    response = model.invoke(messages)
+    print("Model Response:", response.content)
+
+    store.add_message(SystemMessage(content=response.content))
+
+async def final_Story():
+    await History_Store()
+    await New_Story()
+asyncio.run(final_Story())
